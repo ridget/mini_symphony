@@ -1,0 +1,26 @@
+- id: "issue-1"
+  identifier: "ISSUE-1"
+  title: "List files and summarise"
+  description: |
+    List all files in the current directory.
+    Create a file called summary.txt that contains
+    the file listing and a one-line description of
+    each file's likely purpose.
+  state: "todo"
+  priority: 1
+
+- id: "issue-2"
+  identifier: "ISSUE-2"
+  title: "Transform input data"
+  description: |
+    Read the file input.txt in the workspace.
+    Reverse each line and write the result to output.txt.
+  state: "todo"
+  priority: 2
+
+- id: "issue-3"
+  identifier: "ISSUE-3"
+  title: "Already done issue"
+  description: "This issue is already complete."
+  state: "done"
+  priority: 3

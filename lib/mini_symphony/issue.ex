@@ -15,6 +15,8 @@ defmodule MiniSymphony.Issue do
   @enforce_keys [:id, :identifier, :title, :state]
   @required_fields Enum.map(@enforce_keys, &Atom.to_string/1)
 
+  @active_states ["todo", "in_progress"]
+
   defstruct [:id, :identifier, :title, :description, :state, priority: 99]
 
   def new(attrs) when is_map(attrs) do
@@ -26,6 +28,8 @@ defmodule MiniSymphony.Issue do
       {:error, "missing the following fields #{Enum.join(missing, ", ")}"}
     end
   end
+
+  def active_states, do: @active_states
 
   defp cast_to_struct(attrs) do
     allowed_keys = Map.keys(struct(__MODULE__, %{}))
