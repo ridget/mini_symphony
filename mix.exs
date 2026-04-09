@@ -11,7 +11,6 @@ defmodule MiniSymphony.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger],
@@ -19,14 +18,12 @@ defmodule MiniSymphony.MixProject do
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:req, "~> 0.5"},
       {:yaml_elixir, "~> 2.12"},
+      {:ymlr, "~> 5.0"},
       {:jason, "~> 1.4"}
-      # {: _from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
 end
