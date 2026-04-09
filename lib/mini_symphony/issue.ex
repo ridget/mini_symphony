@@ -17,6 +17,7 @@ defmodule MiniSymphony.Issue do
 
   @active_states ["todo", "in_progress"]
 
+  @derive Ymlr.Encoder
   defstruct [:id, :identifier, :title, :description, :state, priority: 99]
 
   def new(attrs) when is_map(attrs) do

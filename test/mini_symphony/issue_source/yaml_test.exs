@@ -42,4 +42,8 @@ defmodule MiniSymphony.IssueSource.YamlTest do
       Yaml.fetch_candidates("/no/such/file.yaml")
     end
   end
+
+  test "updating state", %{path: path} do
+    assert :ok = Yaml.update_state(path, "t1", "done")
+  end
 end

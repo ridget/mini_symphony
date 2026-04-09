@@ -10,6 +10,18 @@ defmodule MiniSymphony.IssueSource.Yaml do
     |> Enum.filter(fn issue -> issue.id in ids end)
   end
 
+  def update_state(file_path, id, new_state) do
+    yaml_doc =
+      fetch_all(file_path)
+      |> Enum.map(fn
+        %Issue{id: ^id} = issue -> %{issue | state: new_state}
+        issue -> issue
+      end)
+      |> Ymlr.document!()
+
+    File.write!(file_path, yaml_doc)
+  end
+
   defp fetch_all(file_path) do
     file_path
     |> YamlElixir.read_from_file!()
