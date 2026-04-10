@@ -1,5 +1,5 @@
 defmodule MiniSymphony.IssueTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest MiniSymphony.Issue
 
   test "creating an issue with required fields works" do
