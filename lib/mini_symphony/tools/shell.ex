@@ -30,7 +30,7 @@ defmodule MiniSymphony.Tools.Shell do
       function: %{
         name: "shell_execute",
         description:
-          "Run a shell command in the workspace directory. Use this for ALL file operations — creating, reading, listing, and modifying files.",
+          "Run a shell command in the workspace directory. Use this for the following file operations — creating, listing, and modifying files.",
         parameters: %{
           type: "object",
           required: ["command"],
