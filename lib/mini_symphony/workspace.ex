@@ -2,7 +2,7 @@ defmodule MiniSymphony.Workspace do
   def create_for_issue(workspace_root, %MiniSymphony.Issue{} = issue) do
     path =
       path_for_issue(workspace_root, issue)
-      |> File.mkdir_p!()
+      |> tap(&File.mkdir_p!/1)
 
     {:ok, path}
   end
