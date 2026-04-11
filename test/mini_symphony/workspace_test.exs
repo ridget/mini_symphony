@@ -43,9 +43,7 @@ defmodule MiniSymphony.WorkspaceTest do
     test "deletes the directory", %{tmp_dir: tmp_dir} do
       path_to_delete = Path.join(tmp_dir, "TEST-1")
       File.mkdir_p!(path_to_delete)
-      {:ok, [deleted_path]} = MiniSymphony.Workspace.remove(path_to_delete)
-
-      assert(deleted_path == path_to_delete)
+      {:ok, [^path_to_delete]} = MiniSymphony.Workspace.remove(path_to_delete)
 
       refute File.exists?(path_to_delete)
     end
