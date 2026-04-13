@@ -1,4 +1,7 @@
 defmodule MiniSymphony.Llm.Ollama do
+  @behaviour MiniSymphony.LLM
+
+  @impl true
   def chat(url, model, messages, opts \\ []) do
     tools = Keyword.get(opts, :tools, [])
     body = %{model: model, messages: messages, stream: false}
