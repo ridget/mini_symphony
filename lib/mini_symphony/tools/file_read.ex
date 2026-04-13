@@ -8,10 +8,10 @@ defmodule MiniSymphony.Tools.FileRead do
       case File.read(full_path) do
         {:ok, content} ->
           formatted = format_content(content)
-          {:ok, formatted}
+          {:ok, %{output: formatted}}
 
         {:error, reason} ->
-          {:error, "Could not read file: #{reason}"}
+          {:ok, %{output: "Error: Could not read file: #{reason}"}}
       end
     else
       {:error, "Access Denied: Path is outside workspace."}

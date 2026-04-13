@@ -15,11 +15,18 @@ defmodule MiniSymphony.Tools.Shell do
 
     case Task.yield(task, timeout) || Task.shutdown(task) do
       {:ok, {output, code}} ->
-        {:ok, %{output: truncate(output), exit_code: code}}
+        {:ok, %{output: truncate(output), exit_code: code, timed_out: false}}
 
-      nil ->
-        Task.shutdown(task)
-        {:error, timeout}
+      _ ->
+        # Whether it timed out or the task crashed, we return a success 
+        # tuple so the runner can easily report back to the LLM.
+        {:ok,
+         %{
+           output: "Command failed to complete within #{timeout}ms.",
+           # 124 is the standard 'timeout' exit code in bash
+           exit_code: 124,
+           timed_out: true
+         }}
     end
   end
 
