@@ -1,5 +1,5 @@
 defmodule MiniSymphony.AgentRunner do
-  alias MiniSymphony.{Llm.Ollama, Tools.Shell, Tools.FileRead, Workspace}
+  alias MiniSymphony.{Tools.Shell, Tools.FileRead, Workspace}
 
   def run(issue, config) do
     max_turns = Map.get(config, :max_turns, 10)
@@ -39,7 +39,7 @@ defmodule MiniSymphony.AgentRunner do
   defp run_turns(messages, workspace, config, turn, max_turns) do
     tools = [Shell.tool_definition(), FileRead.tool_definition()]
 
-    case Ollama.chat(config.ollama_url, config.model, messages, tools: tools) do
+    case config.llm_module.chat(config.ollama_url, config.model, messages, tools: tools) do
       {:ok, %{"tool_calls" => [_ | _] = tool_calls} = assistant_msg} ->
         # Model wants to use tools
         tool_results = execute_tool_calls(workspace, tool_calls)
@@ -57,7 +57,7 @@ defmodule MiniSymphony.AgentRunner do
 
   defp execute_tool_calls(workspace, tool_calls) do
     Enum.map(tool_calls, fn tool_call ->
-      %{"function" => %{"name" => name, "arguments" => args}, "id" => id} = tool_call
+      %{"function" => %{"arguments" => args, "name" => name}, "id" => id} = tool_call
 
       result =
         case name do
