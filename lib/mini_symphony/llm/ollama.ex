@@ -1,5 +1,5 @@
 defmodule MiniSymphony.Llm.Ollama do
-  @behaviour MiniSymphony.LLM
+  @behaviour MiniSymphony.Llm
 
   @impl true
   def chat(url, model, messages, opts \\ []) do
