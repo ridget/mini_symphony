@@ -1,12 +1,13 @@
 defmodule MiniSymphony.WorkspaceTest do
   use ExUnit.Case, async: true
   doctest MiniSymphony.Workspace
+  alias MiniSymphony.{Workspace, Issue}
 
   @moduletag :tmp_dir
 
   describe "create_for_issue/2" do
     setup do
-      issue = %MiniSymphony.Issue{
+      issue = %Issue{
         id: "t1",
         identifier: "TEST 1",
         title: "Active Issue",
@@ -19,7 +20,7 @@ defmodule MiniSymphony.WorkspaceTest do
     end
 
     test "workspace is created", %{tmp_dir: tmp_dir, issue: issue} do
-      {:ok, path} = MiniSymphony.Workspace.create_for_issue(tmp_dir, issue)
+      {:ok, path} = Workspace.create_for_issue(tmp_dir, issue)
 
       expected_path = Path.join(tmp_dir, "TEST-1")
       assert path == expected_path
@@ -28,12 +29,12 @@ defmodule MiniSymphony.WorkspaceTest do
     end
 
     test "workspace is only created once per task", %{tmp_dir: tmp_dir, issue: issue} do
-      {:ok, path} = MiniSymphony.Workspace.create_for_issue(tmp_dir, issue)
+      {:ok, path} = Workspace.create_for_issue(tmp_dir, issue)
 
       expected_path = Path.join(tmp_dir, "TEST-1")
       assert path == expected_path
 
-      {:ok, idempotent_path} = MiniSymphony.Workspace.create_for_issue(tmp_dir, issue)
+      {:ok, idempotent_path} = Workspace.create_for_issue(tmp_dir, issue)
 
       assert(path == idempotent_path)
     end
@@ -43,7 +44,7 @@ defmodule MiniSymphony.WorkspaceTest do
     test "deletes the directory", %{tmp_dir: tmp_dir} do
       path_to_delete = Path.join(tmp_dir, "TEST-1")
       File.mkdir_p!(path_to_delete)
-      {:ok, [^path_to_delete]} = MiniSymphony.Workspace.remove(path_to_delete)
+      {:ok, [^path_to_delete]} = Workspace.remove(path_to_delete)
 
       refute File.exists?(path_to_delete)
     end
@@ -52,7 +53,7 @@ defmodule MiniSymphony.WorkspaceTest do
   describe "cleanup_stale/2" do
     setup %{tmp_dir: tmp_dir} do
       issues = [
-        %MiniSymphony.Issue{
+        %Issue{
           id: "issue-1",
           identifier: "ISSUE-1",
           title: "List files and summarise",
@@ -65,7 +66,7 @@ defmodule MiniSymphony.WorkspaceTest do
           state: "todo",
           priority: 1
         },
-        %MiniSymphony.Issue{
+        %Issue{
           id: "issue-2",
           identifier: "ISSUE-2",
           title: "Transform input data",
@@ -76,7 +77,7 @@ defmodule MiniSymphony.WorkspaceTest do
           state: "todo",
           priority: 2
         },
-        %MiniSymphony.Issue{
+        %Issue{
           id: "issue-3",
           identifier: "ISSUE-3",
           title: "Already done issue",
@@ -86,10 +87,10 @@ defmodule MiniSymphony.WorkspaceTest do
         }
       ]
 
-      Enum.map(issues, &MiniSymphony.Workspace.create_for_issue(tmp_dir, &1))
+      Enum.map(issues, &Workspace.create_for_issue(tmp_dir, &1))
 
       active_issues =
-        Enum.filter(issues, fn issue -> issue.state in MiniSymphony.Issue.active_states() end)
+        Enum.filter(issues, fn issue -> issue.state in Issue.active_states() end)
 
       %{active_issues: active_issues}
     end
@@ -98,7 +99,7 @@ defmodule MiniSymphony.WorkspaceTest do
       tmp_dir: tmp_dir,
       active_issues: active_issues
     } do
-      MiniSymphony.Workspace.cleanup_stale(tmp_dir, active_issues)
+      Workspace.cleanup_stale(tmp_dir, active_issues)
 
       active_paths =
         tmp_dir
@@ -107,7 +108,7 @@ defmodule MiniSymphony.WorkspaceTest do
         |> Enum.filter(&File.dir?/1)
 
       expected_paths =
-        Enum.map(active_issues, &MiniSymphony.Workspace.path_for_issue(tmp_dir, &1))
+        Enum.map(active_issues, &Workspace.path_for_issue(tmp_dir, &1))
 
       assert Enum.sort(active_paths) == Enum.sort(expected_paths)
     end

@@ -1,30 +1,31 @@
 defmodule MiniSymphony.Tools.ShellTest do
   use ExUnit.Case, async: true
   doctest MiniSymphony.Tools.Shell
+  alias MiniSymphony.Tools.Shell
 
   @moduletag :tmp_dir
 
   describe "execute/3" do
     test "commands can be executed", %{tmp_dir: tmp_dir} do
-      result = MiniSymphony.Tools.Shell.execute("echo hello", tmp_dir)
+      result = Shell.execute("echo hello", tmp_dir)
 
       assert {:ok, %{exit_code: 0, output: "hello\n"}} = result
     end
 
     test "bad commands return non-zero exit code", %{tmp_dir: tmp_dir} do
-      result = MiniSymphony.Tools.Shell.execute("exho hello", tmp_dir)
+      result = Shell.execute("exho hello", tmp_dir)
       assert {:ok, %{exit_code: 127, output: _output}} = result
     end
 
     test "long output is truncated", %{tmp_dir: tmp_dir} do
       {:ok, %{exit_code: 0, output: output}} =
-        MiniSymphony.Tools.Shell.execute("seq 1 10000", tmp_dir)
+        Shell.execute("seq 1 10000", tmp_dir)
 
       assert !String.contains?(output, "10000")
     end
 
     test "command runs in directory", %{tmp_dir: tmp_dir} do
-      MiniSymphony.Tools.Shell.execute("touch hello.txt", tmp_dir)
+      Shell.execute("touch hello.txt", tmp_dir)
 
       {:ok, files} = File.ls(tmp_dir)
 
@@ -34,7 +35,7 @@ defmodule MiniSymphony.Tools.ShellTest do
 
   describe "tool_definition/0" do
     test "returns a valid Ollama/OpenAI schema" do
-      schema = MiniSymphony.Tools.Shell.tool_definition()
+      schema = Shell.tool_definition()
 
       assert schema.type == "function"
       assert schema.function.name == "shell_execute"
