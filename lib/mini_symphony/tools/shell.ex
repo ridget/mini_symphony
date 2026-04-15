@@ -40,11 +40,11 @@ defmodule MiniSymphony.Tools.Shell do
           "Run a shell command in the workspace directory. Use this for the following file operations — creating, listing, and modifying files.",
         parameters: %{
           type: "object",
-          required: ["command"],
+          required: ["cmd"],
           properties: %{
-            command: %{
+            cmd: %{
               type: "string",
-              description: "The shell command to execute"
+              description: "The shell cmd to execute"
             }
           }
         }

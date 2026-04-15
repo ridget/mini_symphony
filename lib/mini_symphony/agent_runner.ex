@@ -20,6 +20,13 @@ defmodule MiniSymphony.AgentRunner do
     You have a shell_execute tool to run commands in this directory.
     You have a file_read tool to read files in this directory.
     Complete the issue described by the user. Be concise.
+    # Tools
+    You may call one or more functions to assist with the user query.
+    You are provided with function signatures within <tools></tools>:
+    When you want to call a tool, you MUST use the following format:
+    <tool_call>
+    {"name": "tool_name", "arguments": {"arg": "value"}}
+    </tool_call>
     """
   end
 
@@ -46,7 +53,7 @@ defmodule MiniSymphony.AgentRunner do
         updated_messages = messages ++ [assistant_msg | tool_results]
         run_turns(updated_messages, workspace, config, turn + 1, max_turns)
 
-      {:ok, %{"content" => _content} = _assistant_msg} ->
+      {:ok, %{"content" => content} = _assistant_msg} ->
         # Model responded with text — it's done
         :ok
 
@@ -61,7 +68,7 @@ defmodule MiniSymphony.AgentRunner do
 
       result =
         case name do
-          "shell_execute" -> Shell.execute(args["command"], workspace)
+          "shell_execute" -> Shell.execute(args["cmd"], workspace)
           "read_file" -> FileRead.read_file(args["path"], workspace)
           _ -> {:error, "Unknown tool"}
         end
