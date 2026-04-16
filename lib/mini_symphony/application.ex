@@ -7,14 +7,16 @@ defmodule MiniSymphony.Application do
 
   @impl true
   def start(_type, _args) do
+    config = %MiniSymphony.Config{
+      issues_file: System.get_env("ISSUES_FILE", "issues.yaml"),
+      model: System.get_env("OLLAMA_MODEL", "llama3.1:8b")
+    }
+
     children = [
-      # Starts a worker by calling: MiniSymphony.Worker.start_link(arg)
-      # {MiniSymphony.Worker, arg}
+      {Task.Supervisor, name: MiniSymphony.TaskSupervisor},
+      {MiniSymphony.Orchestrator, config: config}
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: MiniSymphony.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(children, strategy: :one_for_one, name: MiniSymphony.Supervisor)
   end
 end

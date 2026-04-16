@@ -24,3 +24,13 @@
   description: "This issue is already complete."
   state: "done"
   priority: 3
+
+- id: "issue-4"
+  identifier: "ISSUE-4"
+  title: "Code report"
+  description: |
+    List all .ex files in the current directory recursively.
+    Count the lines of code in each file.
+    Create report.txt with a formatted summary table.
+  state: "todo"
+  priority: 1

@@ -10,7 +10,7 @@ defmodule MiniSymphony.AgentRunner do
         %{role: "user", content: user_prompt(issue)}
       ]
 
-      run_turns(messages, workspace, config, 0, max_turns)
+      run_turns(messages, workspace, config, 0, max_turns, issue)
     end
   end
 
@@ -38,12 +38,12 @@ defmodule MiniSymphony.AgentRunner do
     """
   end
 
-  defp run_turns(_messages, _workspace, _config, turn, max_turns)
+  defp run_turns(_messages, _workspace, _config, turn, max_turns, _issue)
        when turn >= max_turns do
     {:error, :max_turns_exceeded}
   end
 
-  defp run_turns(messages, workspace, config, turn, max_turns) do
+  defp run_turns(messages, workspace, config, turn, max_turns, issue) do
     tools = [Shell.tool_definition(), FileRead.tool_definition()]
 
     case config.llm_module.chat(config.ollama_url, config.model, messages, tools: tools) do
@@ -51,13 +51,15 @@ defmodule MiniSymphony.AgentRunner do
         # Model wants to use tools
         tool_results = execute_tool_calls(workspace, tool_calls)
         updated_messages = messages ++ [assistant_msg | tool_results]
-        run_turns(updated_messages, workspace, config, turn + 1, max_turns)
+        run_turns(updated_messages, workspace, config, turn + 1, max_turns, issue)
 
-      {:ok, %{"content" => content} = _assistant_msg} ->
+      {:ok, %{"content" => _content} = _assistant_msg} ->
         # Model responded with text — it's done
+        MiniSymphony.IssueSource.Yaml.update_state(config.issues_file, issue.id, "done")
         :ok
 
       {:error, reason} ->
+        MiniSymphony.IssueSource.Yaml.update_state(config.issues_file, issue.id, "failed")
         {:error, reason}
     end
   end
