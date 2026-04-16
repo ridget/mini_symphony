@@ -1,36 +1,34 @@
-- id: "issue-1"
-  identifier: "ISSUE-1"
-  title: "List files and summarise"
+---
+- id: issue-1
+  priority: 1
+  state: todo
   description: |
     List all files in the current directory.
     Create a file called summary.txt that contains
     the file listing and a one-line description of
     each file's likely purpose.
-  state: "todo"
-  priority: 1
-
-- id: "issue-2"
-  identifier: "ISSUE-2"
-  title: "Transform input data"
+  title: List files and summarise
+  identifier: ISSUE-1
+- id: issue-2
+  priority: 2
+  state: todo
   description: |
     Read the file input.txt in the workspace.
     Reverse each line and write the result to output.txt.
-  state: "todo"
-  priority: 2
-
-- id: "issue-3"
-  identifier: "ISSUE-3"
-  title: "Already done issue"
-  description: "This issue is already complete."
-  state: "done"
+  title: Transform input data
+  identifier: ISSUE-2
+- id: issue-3
   priority: 3
-
-- id: "issue-4"
-  identifier: "ISSUE-4"
-  title: "Code report"
+  state: done
+  description: This issue is already complete.
+  title: Already done issue
+  identifier: ISSUE-3
+- id: issue-4
+  priority: 1
+  state: todo
   description: |
     List all .ex files in the current directory recursively.
     Count the lines of code in each file.
     Create report.txt with a formatted summary table.
-  state: "todo"
-  priority: 1
+  title: Code report
+  identifier: ISSUE-4

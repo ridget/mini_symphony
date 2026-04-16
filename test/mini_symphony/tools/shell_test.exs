@@ -40,9 +40,9 @@ defmodule MiniSymphony.Tools.ShellTest do
       assert schema.type == "function"
       assert schema.function.name == "shell_execute"
 
-      assert get_in(schema, [:function, :parameters, :properties, :command, :type]) == "string"
+      assert get_in(schema, [:function, :parameters, :properties, :cmd, :type]) == "string"
 
-      assert "command" in schema.function.parameters.required
+      assert "cmd" in schema.function.parameters.required
     end
   end
 end

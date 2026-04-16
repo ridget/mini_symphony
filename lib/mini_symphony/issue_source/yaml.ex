@@ -3,10 +3,20 @@ defmodule MiniSymphony.IssueSource.Yaml do
 
   def fetch_candidates(file_path) do
     fetch_all(file_path)
+    |> Enum.filter(fn issue -> issue.state in Issue.active_states() end)
+  end
+
+  def fetch_by_id(file_path, id) do
+    fetch_all(file_path)
+    |> Enum.find(fn issue -> issue.id == id end)
+    |> case do
+      nil -> {:error, :not_found}
+      issue -> {:ok, issue}
+    end
   end
 
   def fetch_by_ids(file_path, ids) do
-    fetch_all(file_path)
+    fetch_candidates(file_path)
     |> Enum.filter(fn issue -> issue.id in ids end)
   end
 
@@ -31,6 +41,5 @@ defmodule MiniSymphony.IssueSource.Yaml do
       # Silently skip malformed YAML entries
       {:error, _reason} -> []
     end)
-    |> Enum.filter(fn issue -> issue.state in Issue.active_states() end)
   end
 end

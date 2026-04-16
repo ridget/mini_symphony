@@ -20,7 +20,8 @@ defmodule MiniSymphony.AgentRunnerTest do
         model: "test",
         workspace_root: root,
         max_turns: 5,
-        llm_module: MiniSymphony.Llm.NoOp
+        llm_module: MiniSymphony.Llm.NoOp,
+        issues_file: "issues.yaml"
       },
       Map.new(overrides)
     )
@@ -45,7 +46,7 @@ defmodule MiniSymphony.AgentRunnerTest do
            %{
              "function" => %{
                "name" => "shell_execute",
-               "arguments" => %{"command" => "echo hello"}
+               "arguments" => %{"cmd" => "echo hello"}
              },
              "id" => "callabc123"
            }
@@ -69,7 +70,7 @@ defmodule MiniSymphony.AgentRunnerTest do
            %{
              "function" => %{
                "name" => "shell_execute",
-               "arguments" => %{"command" => "echo loop"}
+               "arguments" => %{"cmd" => "echo loop"}
              },
              "id" => "callabc123"
            }

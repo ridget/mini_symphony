@@ -56,7 +56,6 @@ defmodule MiniSymphony.AgentRunner do
       {:ok, %{"content" => _content} = _assistant_msg} ->
         # Model responded with text — it's done
         MiniSymphony.IssueSource.Yaml.update_state(config.issues_file, issue.id, "done")
-        :ok
 
       {:error, reason} ->
         MiniSymphony.IssueSource.Yaml.update_state(config.issues_file, issue.id, "failed")
