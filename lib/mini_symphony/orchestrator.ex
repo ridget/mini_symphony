@@ -18,6 +18,7 @@ defmodule MiniSymphony.Orchestrator do
 
   @impl true
   def init(config) do
+    config = %{config | fetch_issue_fn: config.fetch_issue_fn || default_fetch_fn(config)}
     Logger.info("Orchestrator starting, polling #{config.issues_file}")
 
     {:ok, %__MODULE__{config: config}, {:continue, :first_tick}}
@@ -108,6 +109,12 @@ defmodule MiniSymphony.Orchestrator do
       {:error, reason} ->
         Logger.error("Failed to start agent for #{issue.id}: #{inspect(reason)}")
         state
+    end
+  end
+
+  defp default_fetch_fn(config) do
+    fn id ->
+      MiniSymphony.IssueSource.Yaml.fetch_by_id(config.issues_file, id)
     end
   end
 end

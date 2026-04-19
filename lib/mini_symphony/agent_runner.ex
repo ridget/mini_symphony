@@ -1,5 +1,6 @@
 defmodule MiniSymphony.AgentRunner do
   alias MiniSymphony.{Tools.Shell, Tools.FileRead, Workspace}
+  require Logger
 
   def run(issue, config) do
     max_turns = Map.get(config, :max_turns, 10)
@@ -48,14 +49,41 @@ defmodule MiniSymphony.AgentRunner do
 
     case config.llm_module.chat(config.ollama_url, config.model, messages, tools: tools) do
       {:ok, %{"tool_calls" => [_ | _] = tool_calls} = assistant_msg} ->
-        # Model wants to use tools
         tool_results = execute_tool_calls(workspace, tool_calls)
         updated_messages = messages ++ [assistant_msg | tool_results]
         run_turns(updated_messages, workspace, config, turn + 1, max_turns, issue)
 
-      {:ok, %{"content" => _content} = _assistant_msg} ->
-        # Model responded with text — it's done
-        MiniSymphony.IssueSource.Yaml.update_state(config.issues_file, issue.id, "done")
+      {:ok, %{"content" => _content} = assistant_msg} ->
+        case config.fetch_issue_fn.(issue.id) do
+          {:ok, %{state: current_state}} when current_state in ["todo", "processing"] ->
+            Logger.info("Agent claims done but #{issue.id} is still #{current_state}. Nudging...")
+
+            continuation_msg = %{
+              role: "user",
+              content:
+                "The issue is still in an active state. Review what you've done so far and continue working. Do not restate the issue — focus on what remains."
+            }
+
+            run_turns(
+              messages ++ [assistant_msg, continuation_msg],
+              workspace,
+              config,
+              turn + 1,
+              max_turns,
+              issue
+            )
+
+          {:ok, %{state: "done"}} ->
+            Logger.info("Agent confirmed issue #{issue.id} is done.")
+            :ok
+
+          {:ok, %{state: "failed"}} ->
+            {:error, :task_failed}
+
+          {:error, reason} ->
+            Logger.warning("Could not verify state: #{inspect(reason)}")
+            :ok
+        end
 
       {:error, reason} ->
         MiniSymphony.IssueSource.Yaml.update_state(config.issues_file, issue.id, "failed")

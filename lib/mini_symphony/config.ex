@@ -6,5 +6,7 @@ defmodule MiniSymphony.Config do
             ollama_url: "http://localhost:11434",
             llm_module: MiniSymphony.Llm.Ollama,
             model: "llama3.1:8b",
-            max_turns: 10
+            max_turns: 10,
+            # setup in orchestrator init
+            fetch_issue_fn: nil
 end
