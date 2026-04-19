@@ -8,5 +8,6 @@ defmodule MiniSymphony.Config do
             model: "llama3.1:8b",
             max_turns: 10,
             # setup in orchestrator init
-            fetch_issue_fn: nil
+            fetch_issue_fn: nil,
+            retry_attempts: %{}
 end

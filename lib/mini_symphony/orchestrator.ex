@@ -36,26 +36,98 @@ defmodule MiniSymphony.Orchestrator do
     {:noreply, do_tick(state)}
   end
 
+  @impl true
   def handle_info({:tick, _old_token}, state) do
     {:noreply, state}
   end
 
+  @impl true
   def handle_info({:DOWN, ref, :process, _pid, reason}, state) do
-    entry = Enum.find(state.running, fn {_id, e} -> e.ref == ref end)
+    {issue_id, %{issue: issue}} =
+      Enum.find(state.running, fn {_id, entry} -> entry.ref == ref end)
 
-    case entry do
-      {issue_id, _data} ->
-        Logger.info("Agent #{issue_id} terminated with reason: #{inspect(reason)}")
+    new_running = Map.delete(state.running, issue_id)
+    new_state = %{state | running: new_running}
 
+    case reason do
+      :normal ->
+        Logger.info("Agent #{issue_id} finished normally. Releasing claim.")
+        {:noreply, %{new_state | claimed: MapSet.delete(state.claimed, issue_id)}}
+
+      abnormal_reason ->
+        Logger.error(
+          "Agent #{issue_id} exited abnormally: #{inspect(abnormal_reason)}. Scheduling retry."
+        )
+
+        current_attempt = get_in(state.retry_attempts, [issue_id, :attempt_number]) || 0
+
+        {:noreply, schedule_retry(new_state, issue_id, issue, current_attempt + 1)}
+    end
+  end
+
+  @impl true
+  def handle_info({:retry, issue_id, token}, state) do
+    case Map.get(state.retry_attempts, issue_id) do
+      %{token: ^token} ->
+        handle_validated_retry(issue_id, state)
+
+      _ ->
+        Logger.debug("Stale retry detected for #{issue_id}, ignoring.")
+        {:noreply, state}
+    end
+  end
+
+  defp schedule_retry(state, issue_id, issue, attempt_number) do
+    # 5 -> 10 -> 20 -> 40 -> 60s (capped) exponential backoff
+    delay = min(5_000 * Integer.pow(2, attempt_number - 1), 60_000)
+
+    token = make_ref()
+
+    timer = Process.send_after(self(), {:retry, issue_id, token}, delay)
+
+    Logger.info("Retrying #{issue_id} - attempt: #{attempt_number} in #{delay}")
+
+    %{
+      state
+      | retry_attempts: %{
+          issue_id => %{
+            attempt_number: attempt_number,
+            timer: timer,
+            token: token,
+            issue: issue
+          }
+        }
+    }
+  end
+
+  defp handle_validated_retry(issue_id, state) do
+    case MiniSymphony.IssueSource.Yaml.fetch_by_id(state.config.issues_file, issue_id) do
+      {:ok, %{state: current_state} = fresh_issue} ->
+        if MiniSymphony.Issue.active?(current_state) do
+          Logger.info("Retry validated for #{issue_id}. Dispatching agent.")
+
+          new_state = %{state | retry_attempts: Map.delete(state.retry_attempts, issue_id)}
+          maybe_dispatch_issue(new_state, fresh_issue)
+        else
+          Logger.info(
+            "Task #{issue_id} moved to terminal state (#{current_state}) during backoff. Releasing."
+          )
+
+          {:noreply,
+           %{
+             state
+             | retry_attempts: Map.delete(state.retry_attempts, issue_id),
+               claimed: MapSet.delete(state.claimed, issue_id)
+           }}
+        end
+
+      {:error, _reason} ->
         {:noreply,
          %{
            state
-           | running: Map.delete(state.running, issue_id),
+           | retry_attempts: Map.delete(state.retry_attempts, issue_id),
              claimed: MapSet.delete(state.claimed, issue_id)
          }}
-
-      nil ->
-        {:noreply, state}
     end
   end
 

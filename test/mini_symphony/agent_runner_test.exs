@@ -13,7 +13,7 @@ defmodule MiniSymphony.AgentRunnerTest do
     %{workspace_root: workspace_root}
   end
 
-  defp config(root, overrides \\ []) do
+  defp config(root, overrides) do
     Map.merge(
       %{
         ollama_url: "http://stub",
@@ -107,8 +107,6 @@ defmodule MiniSymphony.AgentRunnerTest do
       title: "nudge me",
       state: "todo"
     }
-
-    test_pid = self()
 
     fetch_fn = fn id ->
       case Process.get({:fetch_count, id}, 0) do

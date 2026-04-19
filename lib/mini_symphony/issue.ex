@@ -32,6 +32,8 @@ defmodule MiniSymphony.Issue do
 
   def active_states, do: @active_states
 
+  def active?(state), do: state in active_states()
+
   defp cast_to_struct(attrs) do
     allowed_keys = Map.keys(struct(__MODULE__, %{}))
 
