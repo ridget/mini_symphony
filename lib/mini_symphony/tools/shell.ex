@@ -1,15 +1,27 @@
 defmodule MiniSymphony.Tools.Shell do
   @max_output_bytes 4096
 
+  def execute(cmd, workspace) when is_list(cmd) do
+    execute(Enum.join(cmd, " "), workspace)
+  end
+
   def execute(command, workspace_path, opts \\ []) do
-    timeout = Keyword.get(opts, :timeout, 30_000)
+    safe_path = to_string(workspace_path || ".")
+
+    # hack to ensure commands executed relative to safe path
+    safe_command =
+      command
+      |> to_string()
+      |> String.replace(~r/cd\s+\.\.\/?/, "ls")
+
+    timeout = Keyword.get(opts, :timeout, 60_000)
 
     task =
       Task.async(fn ->
-        System.cmd("sh", ["-c", command],
-          cd: workspace_path,
+        System.cmd("sh", ["-c", safe_command],
+          cd: safe_path,
           stderr_to_stdout: true,
-          env: [{"HOME", workspace_path}]
+          env: [{"HOME", safe_path}, {"SSH_AUTH_SOCK", System.get_env("SSH_AUTH_SOCK")}]
         )
       end)
 
@@ -18,12 +30,9 @@ defmodule MiniSymphony.Tools.Shell do
         {:ok, %{output: truncate(output), exit_code: code, timed_out: false}}
 
       _ ->
-        # Whether it timed out or the task crashed, we return a success 
-        # tuple so the runner can easily report back to the LLM.
         {:ok,
          %{
            output: "Command failed to complete within #{timeout}ms.",
-           # 124 is the standard 'timeout' exit code in bash
            exit_code: 124,
            timed_out: true
          }}

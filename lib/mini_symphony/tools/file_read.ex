@@ -2,19 +2,20 @@ defmodule MiniSymphony.Tools.FileRead do
   @max_lines 500
 
   def read_file(path, workspace_path) do
-    full_path = Path.expand(path, workspace_path)
+    workspace_path = Path.expand(workspace_path) |> Path.absname()
+    full_path = Path.expand(path, workspace_path) |> Path.absname()
 
     if String.starts_with?(full_path, workspace_path) do
-      case File.read(full_path) do
-        {:ok, content} ->
-          formatted = format_content(content)
-          {:ok, %{output: formatted}}
-
-        {:error, reason} ->
-          {:ok, %{output: "Error: Could not read file: #{reason}"}}
+      if File.dir?(full_path) do
+        {:ok, %{output: "Error: '#{path}' is a directory. Use a directory listing tool instead."}}
+      else
+        case File.read(full_path) do
+          {:ok, content} -> {:ok, %{output: format_content(content)}}
+          {:error, reason} -> {:ok, %{output: "Error: Could not read file: #{reason}"}}
+        end
       end
     else
-      {:error, "Access Denied: Path is outside workspace."}
+      {:error, %{output: "Access Denied: Path '#{path}' is outside workspace."}}
     end
   end
 

@@ -29,7 +29,10 @@ defmodule MiniSymphony.Tools.FileReadTest do
 
       result = FileRead.read_file(malicious_path, tmp_dir)
 
-      assert {:error, "Access Denied: Path is outside workspace."} = result
+      expected_message = "Access Denied: Path '#{malicious_path}' is outside workspace."
+
+      assert {:error, %{output: message}} = result
+      assert expected_message == message
     end
   end
 

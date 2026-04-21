@@ -3,15 +3,15 @@ defmodule MiniSymphony.Llm.NoOp do
 
   @impl true
   def chat(_url, _model, _messages, _opts) do
-    IO.puts("stubbed responses: #{Process.get(:stub_responses)}")
+    stubs = Process.get(:stub_responses)
 
-    case Process.get(:stub_responses) do
-      [response | rest] ->
+    case stubs do
+      [response | rest] when is_list(stubs) ->
         Process.put(:stub_responses, rest)
         response
 
-      [] ->
-        {:ok, %{"role" => "assistant", "content" => "Default stub response."}}
+      _ ->
+        {:ok, %{"role" => "assistant", "content" => "The work is done."}}
     end
   end
 end

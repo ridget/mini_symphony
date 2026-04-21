@@ -39,7 +39,7 @@ defmodule MiniSymphony.Orchestrator do
     retry_attempts = map_size(state.retry_attempts)
 
     Logger.info(
-      "Poll cycle: #{running_count} running, #{retry_attempts}",
+      "Poll cycle: #{running_count} running, retry_attempts: #{retry_attempts}",
       running_count: running_count,
       retry_attempts: retry_attempts
     )
@@ -178,8 +178,6 @@ defmodule MiniSymphony.Orchestrator do
   end
 
   defp maybe_dispatch_issue(state, issue) do
-    Logger.info("state", state: state, issue: issue)
-
     cond do
       MapSet.member?(state.claimed, issue.id) -> state
       map_size(state.running) >= state.config.max_concurrent_agents -> state

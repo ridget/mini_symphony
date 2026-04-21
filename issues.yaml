@@ -1,34 +1,41 @@
----
-- id: issue-1
+- id: issue-bootstrap-project
   priority: 1
   state: todo
+  identifier: MS-201
+  title: Bootstrap a new Elixir module
   description: |
-    List all files in the current directory.
-    Create a file called summary.txt that contains
-    the file listing and a one-line description of
-    each file's likely purpose.
-  title: List files and summarise
-  identifier: ISSUE-1
-- id: issue-2
+    1. run `mix new . --app calculator`
+    3. Create `lib/calculator.ex` including the `defmodule` and the `add/2` and `subtract/2` implementations. DO NOT leave the file empty.
+    4. Create a test file `test/calculator_test.exs` that verifies both functions.
+    5. Create a readme for the package: `README.md` - with appropriate documentation for users
+
+- id: issue-scaffold-data
   priority: 2
-  state: todo
-  description: |
-    Read the file input.txt in the workspace.
-    Reverse each line and write the result to output.txt.
-  title: Transform input data
-  identifier: ISSUE-2
-- id: issue-3
-  priority: 3
   state: done
-  description: This issue is already complete.
-  title: Already done issue
-  identifier: ISSUE-3
-- id: issue-4
-  priority: 1
-  state: todo
+  identifier: MS-202
+  title: Generate Mock Data Environment
   description: |
-    List all .ex files in the current directory recursively.
-    Count the lines of code in each file.
-    Create report.txt with a formatted summary table.
-  title: Code report
-  identifier: ISSUE-4
+    Initialize the workspace with data for other agents.
+    1. Create a directory called `data/`.
+    2. Create `data/users.json` with a list of 3 fake user objects 
+       (name, email, role).
+    3. Create a `README.md` in the root explaining that this 
+       workspace has been initialized with mock data.
+
+- id: issue-deep-dive-pinchflat
+  priority: 3
+  state: todo
+  identifier: MS-203
+  title: Clone and Document the Pinchflat Repo
+  description: |
+    1. clone the Pinchflat repository: 
+       `git clone git@github.com:kieraneglin/pinchflat.git`
+    2. Change into the `pinchflat` directory andidentify the 
+       primary Elixir version requirements in `mix.exs`.
+    3. Explore the `lib/` directory to identify the core 
+       architectural components (e.g., where are the background jobs? what architecture does the app have?).
+    4. Write a file `pinchflat_summary.md` in the workspace root.
+       The summary should include:
+       - The system user and path (from `whoami` and `pwd`).
+       - A high-level overview of how Pinchflat handles video downloads.
+       - A list of the liveview controllers used 
