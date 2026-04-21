@@ -9,17 +9,21 @@ defmodule MiniSymphony.Orchestrator do
             running: %{},
             # issue_ids we own (running + retrying)
             claimed: MapSet.new(),
+            # issue_id => retry count
+            retry_attempts: %{},
             tick_token: nil
 
   def start_link(opts) do
     config = Keyword.fetch!(opts, :config)
-    GenServer.start_link(__MODULE__, config, name: __MODULE__)
+    # Allow overriding the name for tests, or default to __MODULE__
+    name = Keyword.get(opts, :name, __MODULE__)
+    GenServer.start_link(__MODULE__, config, name: name)
   end
 
   @impl true
   def init(config) do
     config = %{config | fetch_issue_fn: config.fetch_issue_fn || default_fetch_fn(config)}
-    Logger.info("Orchestrator starting, polling #{config.issues_file}")
+    Logger.info("Orchestrator starting", issues_file: config.issues_file)
 
     {:ok, %__MODULE__{config: config}, {:continue, :first_tick}}
   end
@@ -31,8 +35,15 @@ defmodule MiniSymphony.Orchestrator do
 
   @impl true
   def handle_info({:tick, token}, %{tick_token: token} = state) do
-    Logger.info(state)
-    Logger.info("Tick: #{map_size(state.running)} running")
+    running_count = map_size(state.running)
+    retry_attempts = map_size(state.retry_attempts)
+
+    Logger.info(
+      "Poll cycle: #{running_count} running, #{retry_attempts}",
+      running_count: running_count,
+      retry_attempts: retry_attempts
+    )
+
     {:noreply, do_tick(state)}
   end
 
@@ -51,15 +62,27 @@ defmodule MiniSymphony.Orchestrator do
 
     case reason do
       :normal ->
-        Logger.info("Agent #{issue_id} finished normally. Releasing claim.")
-        {:noreply, %{new_state | claimed: MapSet.delete(state.claimed, issue_id)}}
+        claimed = MapSet.delete(state.claimed, issue_id)
 
-      abnormal_reason ->
-        Logger.error(
-          "Agent #{issue_id} exited abnormally: #{inspect(abnormal_reason)}. Scheduling retry."
+        Logger.info("Agent #{issue_id} finished normally. Releasing claim.",
+          issue_id: issue_id,
+          issue_identifier: issue.identifier,
+          issue_state: issue.state,
+          claimed: claimed
         )
 
+        {:noreply, %{new_state | claimed: claimed}}
+
+      abnormal_reason ->
         current_attempt = get_in(state.retry_attempts, [issue_id, :attempt_number]) || 0
+
+        Logger.error(
+          "Agent #{issue_id} exited abnormally: #{inspect(abnormal_reason)}. Scheduling retry.",
+          issue_id: issue_id,
+          issue_identifier: issue.identifier,
+          issue_state: issue.state,
+          current_attempt: current_attempt
+        )
 
         {:noreply, schedule_retry(new_state, issue_id, issue, current_attempt + 1)}
     end
@@ -69,10 +92,9 @@ defmodule MiniSymphony.Orchestrator do
   def handle_info({:retry, issue_id, token}, state) do
     case Map.get(state.retry_attempts, issue_id) do
       %{token: ^token} ->
-        handle_validated_retry(issue_id, state)
+        {:noreply, handle_validated_retry(issue_id, state)}
 
       _ ->
-        Logger.debug("Stale retry detected for #{issue_id}, ignoring.")
         {:noreply, state}
     end
   end
@@ -82,52 +104,61 @@ defmodule MiniSymphony.Orchestrator do
     delay = min(5_000 * Integer.pow(2, attempt_number - 1), 60_000)
 
     token = make_ref()
-
     timer = Process.send_after(self(), {:retry, issue_id, token}, delay)
 
-    Logger.info("Retrying #{issue_id} - attempt: #{attempt_number} in #{delay}")
+    Logger.info("Scheduling retry for issue",
+      event: :retry_scheduled,
+      issue_id: issue_id,
+      issue_identifier: issue.identifier,
+      attempt_number: attempt_number,
+      delay_ms: delay
+    )
 
-    %{
-      state
-      | retry_attempts: %{
-          issue_id => %{
-            attempt_number: attempt_number,
-            timer: timer,
-            token: token,
-            issue: issue
-          }
-        }
+    new_retry_data = %{
+      attempt_number: attempt_number,
+      timer: timer,
+      token: token,
+      issue: issue
     }
+
+    %{state | retry_attempts: Map.put(state.retry_attempts, issue_id, new_retry_data)}
   end
 
   defp handle_validated_retry(issue_id, state) do
     case MiniSymphony.IssueSource.Yaml.fetch_by_id(state.config.issues_file, issue_id) do
       {:ok, %{state: current_state} = fresh_issue} ->
         if MiniSymphony.Issue.active?(current_state) do
-          Logger.info("Retry validated for #{issue_id}. Dispatching agent.")
+          Logger.info("Retry validated for #{issue_id}. Dispatching agent.",
+            issue_id: issue_id,
+            issue_identifier: fresh_issue.identifier,
+            issue_state: fresh_issue.state
+          )
 
-          new_state = %{state | retry_attempts: Map.delete(state.retry_attempts, issue_id)}
+          retry_attempts = Map.delete(state.retry_attempts, issue_id)
+
+          new_state = %{state | retry_attempts: retry_attempts}
           maybe_dispatch_issue(new_state, fresh_issue)
         else
           Logger.info(
-            "Task #{issue_id} moved to terminal state (#{current_state}) during backoff. Releasing."
+            "Issue #{issue_id} moved to terminal state (#{current_state}) during backoff. Releasing.",
+            issue_id: issue_id,
+            issue_identifier: fresh_issue.identifier,
+            issue_state: fresh_issue.state
           )
 
-          {:noreply,
-           %{
-             state
-             | retry_attempts: Map.delete(state.retry_attempts, issue_id),
-               claimed: MapSet.delete(state.claimed, issue_id)
-           }}
+          %{
+            state
+            | retry_attempts: Map.delete(state.retry_attempts, issue_id),
+              claimed: MapSet.delete(state.claimed, issue_id)
+          }
         end
 
       {:error, _reason} ->
-        {:noreply,
-         %{
-           state
-           | retry_attempts: Map.delete(state.retry_attempts, issue_id),
-             claimed: MapSet.delete(state.claimed, issue_id)
-         }}
+        %{
+          state
+          | retry_attempts: Map.delete(state.retry_attempts, issue_id),
+            claimed: MapSet.delete(state.claimed, issue_id)
+        }
     end
   end
 
@@ -141,22 +172,14 @@ defmodule MiniSymphony.Orchestrator do
   end
 
   defp dispatch(state) do
-    case MiniSymphony.IssueSource.Yaml.fetch_candidates(state.config.issues_file) do
-      {:error, reason} ->
-        Logger.warning("Failed to fetch issues: #{inspect(reason)}")
-        state
-
-      candidates ->
-        state =
-          candidates
-          |> Enum.sort_by(& &1.priority)
-          |> Enum.reduce(state, fn issue, acc -> maybe_dispatch_issue(acc, issue) end)
-
-        state
-    end
+    MiniSymphony.IssueSource.Yaml.fetch_candidates(state.config.issues_file)
+    |> Enum.sort_by(& &1.priority)
+    |> Enum.reduce(state, fn issue, acc -> maybe_dispatch_issue(acc, issue) end)
   end
 
   defp maybe_dispatch_issue(state, issue) do
+    Logger.info("state", state: state, issue: issue)
+
     cond do
       MapSet.member?(state.claimed, issue.id) -> state
       map_size(state.running) >= state.config.max_concurrent_agents -> state
@@ -172,6 +195,13 @@ defmodule MiniSymphony.Orchestrator do
         ref = Process.monitor(pid)
         new_entry = %{id: issue.id, pid: pid, ref: ref, issue: issue}
 
+        Logger.info("Issue dispatched",
+          issue_id: issue.id,
+          issue_identifier: issue.identifier,
+          issue_state: issue.state,
+          pid: pid
+        )
+
         %{
           state
           | running: Map.put(state.running, issue.id, new_entry),
@@ -179,7 +209,12 @@ defmodule MiniSymphony.Orchestrator do
         }
 
       {:error, reason} ->
-        Logger.error("Failed to start agent for #{issue.id}: #{inspect(reason)}")
+        Logger.error("Failed to start agent for issue: #{inspect(reason)}",
+          issue_id: issue.id,
+          issue_identifier: issue.identifier,
+          issue_state: issue.state
+        )
+
         state
     end
   end

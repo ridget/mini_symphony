@@ -3,6 +3,8 @@ defmodule MiniSymphony.Llm.NoOp do
 
   @impl true
   def chat(_url, _model, _messages, _opts) do
+    IO.puts("stubbed responses: #{Process.get(:stub_responses)}")
+
     case Process.get(:stub_responses) do
       [response | rest] ->
         Process.put(:stub_responses, rest)

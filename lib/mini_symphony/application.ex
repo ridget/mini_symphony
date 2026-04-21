@@ -12,10 +12,14 @@ defmodule MiniSymphony.Application do
       model: System.get_env("OLLAMA_MODEL", "llama3.1:8b")
     }
 
-    children = [
-      {Task.Supervisor, name: MiniSymphony.TaskSupervisor},
-      {MiniSymphony.Orchestrator, config: config}
-    ]
+    children = [{Task.Supervisor, name: MiniSymphony.TaskSupervisor}]
+
+    children =
+      if Mix.env() == :test do
+        children
+      else
+        children ++ [{MiniSymphony.Orchestrator, config: config}]
+      end
 
     Supervisor.start_link(children, strategy: :one_for_one, name: MiniSymphony.Supervisor)
   end
