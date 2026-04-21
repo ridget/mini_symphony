@@ -48,6 +48,42 @@ defmodule MiniSymphony.OrchestratorTest do
     assert map_size(state.running) == 1
   end
 
+  test "reconcile kills agents when issue moves to terminal state", %{
+    issues_file: path,
+    tmp_dir: tmp_dir
+  } do
+    issue = %{id: "reconcile_id", title: "X", state: "todo", identifier: "I-1", priority: 1}
+    File.write!(path, Ymlr.document!([issue]))
+
+    {:ok, pid} =
+      Orchestrator.start_link(
+        config: %{
+          workspace_root: tmp_dir,
+          issues_file: path,
+          # Fast poll
+          poll_interval_ms: 100,
+          max_concurrent_agents: 2,
+          ollama_url: "http://stub",
+          llm_module: NoOp,
+          model: "test",
+          fetch_issue_fn: nil
+        },
+        name: nil
+      )
+
+    wait_until(fn -> MapSet.member?(:sys.get_state(pid).claimed, "reconcile_id") end)
+
+    MiniSymphony.IssueSource.Yaml.update_state(path, "reconcile_id", "done")
+
+    send(pid, {:tick, :any})
+
+    wait_until(fn -> !MapSet.member?(:sys.get_state(pid).claimed, "reconcile_id") end)
+
+    state = :sys.get_state(pid)
+    assert MapSet.size(state.claimed) == 0
+    assert map_size(state.running) == 0
+  end
+
   defp wait_until(fun) do
     if fun.() do
       :ok

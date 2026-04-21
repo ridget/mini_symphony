@@ -100,7 +100,7 @@ defmodule MiniSymphony.AgentRunner do
               - This is continuation turn 
               - Resume from the current workspace and state instead of restarting from scratch.
               - The original issue instructions and prior turn context are already present in this thread, so do not restate them before acting.
-              - Focus on the remaining ticket work and do not end the turn while the issue stays active unless you are truly blocked.
+              - Focus on the remaining issue work and do not end the turn while the issue stays active unless you are truly blocked.
               """
             }
 

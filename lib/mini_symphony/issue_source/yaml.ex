@@ -15,6 +15,11 @@ defmodule MiniSymphony.IssueSource.Yaml do
     end
   end
 
+  def fetch_all_by_ids(file_path, ids) do
+    fetch_all(file_path)
+    |> Enum.filter(fn issue -> issue.id in ids end)
+  end
+
   def fetch_by_ids(file_path, ids) do
     fetch_candidates(file_path)
     |> Enum.filter(fn issue -> issue.id in ids end)

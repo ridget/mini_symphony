@@ -3,6 +3,7 @@ defmodule MiniSymphony.Orchestrator do
   require Logger
 
   alias MiniSymphony.AgentRunner
+  alias MiniSymphony.IssueSource.Yaml
 
   defstruct config: nil,
             # issue_id => %{pid: pid, ref: ref, issue: issue}
@@ -163,12 +164,65 @@ defmodule MiniSymphony.Orchestrator do
   end
 
   defp do_tick(state) do
-    state = dispatch(state)
+    new_state =
+      state
+      |> reconcile()
+      |> dispatch()
 
     token = make_ref()
-    Process.send_after(self(), {:tick, token}, state.config.poll_interval_ms)
+    Process.send_after(self(), {:tick, token}, new_state.config.poll_interval_ms)
 
-    %{state | tick_token: token}
+    %{new_state | tick_token: token}
+  end
+
+  defp reconcile(state) do
+    running_issue_ids = Map.keys(state.running)
+
+    if Enum.empty?(running_issue_ids) do
+      state
+    else
+      current_issues = Yaml.fetch_all_by_ids(state.config.issues_file, running_issue_ids)
+      issue_lookup = Map.new(current_issues, &{&1.id, &1})
+
+      Enum.reduce(running_issue_ids, state, fn id, acc ->
+        issue_in_file = Map.get(issue_lookup, id)
+
+        cond do
+          is_nil(issue_in_file) ->
+            terminate_agent(acc, id, "Issue deleted from source")
+
+          not MiniSymphony.Issue.active?(issue_in_file.state) ->
+            terminate_agent(acc, id, "Issue moved to terminal state: #{issue_in_file.state}")
+
+          true ->
+            acc
+        end
+      end)
+    end
+  end
+
+  defp terminate_agent(state, issue_id, reason) do
+    case Map.get(state.running, issue_id) do
+      %{pid: pid, ref: ref, issue: issue} ->
+        Logger.info("Reconciler terminating agent",
+          issue_id: issue_id,
+          identifier: issue.identifier,
+          reason: reason
+        )
+
+        # Clean shutdown
+        Process.demonitor(ref, [:flush])
+        Process.exit(pid, :shutdown)
+
+        %{
+          state
+          | running: Map.delete(state.running, issue_id),
+            claimed: MapSet.delete(state.claimed, issue_id)
+        }
+
+      _ ->
+        state
+    end
   end
 
   defp dispatch(state) do
